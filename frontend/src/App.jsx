@@ -15,7 +15,13 @@ const call = async (path, method = 'GET', body = null) => {
   const res = await fetch(path, opts)
   if (res.status === 204) return null
   const text = await res.text()
-  return text ? JSON.parse(text) : null
+  const data = text ? JSON.parse(text) : null
+  if (!res.ok) {
+    const msg = data?.error || `HTTP ${res.status}`
+    console.error(`API ${method} ${path} →`, res.status, data)
+    throw new Error(msg)
+  }
+  return data
 }
 
 export default function App() {
@@ -42,17 +48,23 @@ export default function App() {
   }, [])
 
   const createTask = async (data) => {
-    const task = await call('/api/tasks', 'POST', data)
-    if (task) setTasks(prev => [task, ...prev])
-    return task
+    try {
+      const task = await call('/api/tasks', 'POST', data)
+      if (task) setTasks(prev => [task, ...prev])
+      return task
+    } catch (e) { alert('Save failed: ' + e.message) }
   }
   const updateTask = async (id, data) => {
-    const task = await call(`/api/tasks?id=${id}`, 'PATCH', data)
-    if (task) setTasks(prev => prev.map(t => t.id === id ? task : t))
+    try {
+      const task = await call(`/api/tasks?id=${id}`, 'PATCH', data)
+      if (task) setTasks(prev => prev.map(t => t.id === id ? task : t))
+    } catch (e) { console.error(e) }
   }
   const deleteTask = async (id) => {
-    await call(`/api/tasks?id=${id}`, 'DELETE')
-    setTasks(prev => prev.filter(t => t.id !== id))
+    try {
+      await call(`/api/tasks?id=${id}`, 'DELETE')
+      setTasks(prev => prev.filter(t => t.id !== id))
+    } catch (e) { console.error(e) }
   }
 
   const createProject = async (data) => {
